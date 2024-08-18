@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { ANOUNCEMENTS_URL } from "constants/constants";
+import { ANOUNCEMENTS_URL } from "constants/api/constants";
 import { Announcement } from "types/types";
 import ServerError from "errors/ServerError";
 import { stripHtml } from "string-strip-html";

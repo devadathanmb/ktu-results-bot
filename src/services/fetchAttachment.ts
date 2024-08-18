@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { ATTACHMENT_URL } from "constants/constants";
+import { ATTACHMENT_URL } from "constants/api/constants";
 import ServerError from "errors/ServerError";
 import Logger from "@/utils/logger";
 

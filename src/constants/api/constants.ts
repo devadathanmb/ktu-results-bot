@@ -14,37 +14,9 @@ const ACADEMIC_CALENDAR_URL =
 const TIMETABLE_URL =
   "https://api.ktu.edu.in/ktu-web-portal-api/anon/timetable";
 
-const FILTERS_REGEX: Record<string, Array<string>> = {
-  "\\bb\\.? ?tech": ["btech"],
-  "\\bm\\.? ?tech": ["mtech"],
-  "\\bmca\\b": ["mca"],
-  "\\bp.? ?hd\\b": ["phd"],
-  "\\bb\\.? ?des": ["bdes"],
-  "\\bmba\\b": ["mba"],
-  "\\bb\\. ?arch": ["barch"],
-  "\\bm\\.? ?arch": ["march"],
-  "\\bb\\.? ?voc": ["bvoc"],
-  "\\bm\\.? ?plan": ["mplan"],
-  "hotel management": ["hmct"],
-  "\\bbhmct": ["hmct"],
-  "\\bmhm\\b": ["mhm"],
-  "(\\bug\\b)|(\\bundergraduate\\b)": [
-    "btech",
-    "bdes",
-    "barch",
-    "bvoc",
-    "hmct",
-  ],
-  "(\\bpg\\b)|(\\bpostgraduate\\b)": [
-    "mtech",
-    "mca",
-    "mba",
-    "march",
-    "mplan",
-    "mhm",
-  ],
-};
 export {
+  ORIGIN_URL,
+  BASE_URL,
   COURSES_URL,
   PUBLISHED_RESULTS_URL,
   RESULT_URL,
@@ -52,7 +24,4 @@ export {
   ATTACHMENT_URL,
   ACADEMIC_CALENDAR_URL,
   TIMETABLE_URL,
-  FILTERS_REGEX,
-  BASE_URL,
-  ORIGIN_URL,
 };

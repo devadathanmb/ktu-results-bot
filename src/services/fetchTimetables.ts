@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { TIMETABLE_URL } from "constants/constants";
+import { TIMETABLE_URL } from "constants/api/constants";
 import { Timetable } from "types/types";
 import ServerError from "errors/ServerError";
 import formatDate from "utils/formatDate";

@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { RESULT_URL } from "constants/constants";
+import { RESULT_URL } from "constants/api/constants";
 import InvalidDataError from "errors/InvalidDataError";
 import { ResultDetails, ResultSummary } from "types/types";
 import ServerError from "errors/ServerError";

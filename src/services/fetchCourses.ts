@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { COURSES_URL } from "constants/constants";
+import { COURSES_URL } from "constants/api/constants";
 import { Course } from "types/types";
 import ServerError from "errors/ServerError";
 import Logger from "@/utils/logger";

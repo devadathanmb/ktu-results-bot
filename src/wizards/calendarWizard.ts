@@ -71,66 +71,71 @@ const academicCalendarWizard = new Scenes.WizardScene<CustomContext>(
       );
       ctx.scene.session.waitingMsgId = waitingMsg.message_id;
 
-      const file = await fetchAttachment(chosenCalendar.encryptId);
-      const fileBuffer = Buffer.from(file, "base64");
+      fetchAttachment(chosenCalendar.encryptId)
+        .then(async (file) => {
+          const fileBuffer = Buffer.from(file, "base64");
 
-      const captionMsg = `
+          const captionMsg = `
 <b>Title:</b> ${chosenCalendar.title}
 
 <b>Date:</b> ${chosenCalendar.date}
 `;
 
-      // Some academic calendars do not have attachments
-      if (!chosenCalendar.attachmentId) {
-        await ctx.reply("No attachment found for this academic calendar.");
-        await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-        await ctx.replyWithHTML("View another calendar?", {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "Yes ✅",
-                  callback_data: "check_another_calendar_true",
-                },
-                {
-                  text: "No ❌",
-                  callback_data: "check_another_calendar_false",
-                },
+          // Some academic calendars do not have attachments
+          if (!chosenCalendar.attachmentId) {
+            await ctx.reply("No attachment found for this academic calendar.");
+            await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+            await ctx.replyWithHTML("View another calendar?", {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "Yes ✅",
+                      callback_data: "check_another_calendar_true",
+                    },
+                    {
+                      text: "No ❌",
+                      callback_data: "check_another_calendar_false",
+                    },
+                  ],
+                ],
+              },
+            });
+            return;
+          }
+
+          await ctx.replyWithDocument(
+            {
+              source: fileBuffer,
+              filename: chosenCalendar.attachmentName,
+            },
+            {
+              caption: captionMsg,
+              parse_mode: "HTML",
+            }
+          );
+
+          await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+          await ctx.replyWithHTML("View another calendar?", {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "Yes ✅",
+                    callback_data: "check_another_calendar_true",
+                  },
+                  {
+                    text: "No ❌",
+                    callback_data: "check_another_calendar_false",
+                  },
+                ],
               ],
-            ],
-          },
+            },
+          });
+        })
+        .catch(async (error) => {
+          return await handleError(ctx, error);
         });
-        return;
-      }
-
-      await ctx.replyWithDocument(
-        {
-          source: fileBuffer,
-          filename: chosenCalendar.attachmentName,
-        },
-        {
-          caption: captionMsg,
-          parse_mode: "HTML",
-        }
-      );
-
-      await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-      await ctx.replyWithHTML("View another calendar?", {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "Yes ✅",
-                callback_data: "check_another_calendar_true",
-              },
-              {
-                text: "No ❌",
-                callback_data: "check_another_calendar_false",
-              },
-            ],
-          ],
-        },
-      });
     } catch (error) {
       return await handleError(ctx, error);
     }
@@ -143,53 +148,55 @@ async function showAcademicCalendars(ctx: CustomContext) {
       "Fetching academic calendars.. Please wait.."
     );
     ctx.scene.session.waitingMsgId = waitingMsg.message_id;
-    const calendars = await fetchAcademicCalendars(
-      ctx.scene.session.pageNumber,
-      10
-    );
-    let calendarMsg = "<b>Academic calendars</b>:\n\n";
-    let calendarButtons: InlineKeyboardButton.CallbackButton[] = [];
+    fetchAcademicCalendars(ctx.scene.session.pageNumber, 10)
+      .then(async (calendars) => {
+        let calendarMsg = "<b>Academic calendars</b>:\n\n";
+        let calendarButtons: InlineKeyboardButton.CallbackButton[] = [];
 
-    calendars.forEach(({ id, title, date }, index) => {
-      calendarMsg += `${index + 1}) ${shortenString(title)}\n<i>Published date : ${date || "N/A"}</i>\n\n`;
-      calendarButtons.push(
-        Markup.button.callback(`${index + 1}`, `calendar_${id}`)
-      );
-    });
+        calendars.forEach(({ id, title, date }, index) => {
+          calendarMsg += `${index + 1}) ${shortenString(title)}\n<i>Published date : ${date || "N/A"}</i>\n\n`;
+          calendarButtons.push(
+            Markup.button.callback(`${index + 1}`, `calendar_${id}`)
+          );
+        });
 
-    calendarMsg += `<b>• <i>Choose an academic calendar using the buttons below</i></b>\n\n`;
-    calendarMsg += `<b>• <i>Use <code>/page pageno</code> to jump to a specific page</i></b>`;
+        calendarMsg += `<b>• <i>Choose an academic calendar using the buttons below</i></b>\n\n`;
+        calendarMsg += `<b>• <i>Use <code>/page pageno</code> to jump to a specific page</i></b>`;
 
-    const nextPageButton = Markup.button.callback("Next ⏭️", "next_page");
-    const prevPageButton = Markup.button.callback("Prev ⏮️", "prev_page");
-    const pageInfoButton = Markup.button.callback(
-      `Page : ${ctx.scene.session.pageNumber + 1}`,
-      "page"
-    );
-    const keyboard = Markup.inlineKeyboard(
-      [...calendarButtons, prevPageButton, pageInfoButton, nextPageButton],
-      {
-        wrap(btn, index, _currentRow) {
-          if (!isNaN(Number(btn.text))) {
-            if (index % 5 === 0) {
-              return true;
-            }
-            return false;
-          } else if (btn === prevPageButton) {
-            return true;
+        const nextPageButton = Markup.button.callback("Next ⏭️", "next_page");
+        const prevPageButton = Markup.button.callback("Prev ⏮️", "prev_page");
+        const pageInfoButton = Markup.button.callback(
+          `Page : ${ctx.scene.session.pageNumber + 1}`,
+          "page"
+        );
+        const keyboard = Markup.inlineKeyboard(
+          [...calendarButtons, prevPageButton, pageInfoButton, nextPageButton],
+          {
+            wrap(btn, index, _currentRow) {
+              if (!isNaN(Number(btn.text))) {
+                if (index % 5 === 0) {
+                  return true;
+                }
+                return false;
+              } else if (btn === prevPageButton) {
+                return true;
+              }
+              return false;
+            },
           }
-          return false;
-        },
-      }
-    );
-    await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-    ctx.scene.session.waitingMsgId = null;
-    const msg = await ctx.sendMessage(calendarMsg, {
-      parse_mode: "HTML",
-      ...keyboard,
-    });
-    ctx.scene.session.tempMsgId = msg.message_id;
-    ctx.scene.session.calendars = calendars;
+        );
+        await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+        ctx.scene.session.waitingMsgId = null;
+        const msg = await ctx.sendMessage(calendarMsg, {
+          parse_mode: "HTML",
+          ...keyboard,
+        });
+        ctx.scene.session.tempMsgId = msg.message_id;
+        ctx.scene.session.calendars = calendars;
+      })
+      .catch(async (error) => {
+        await handleError(ctx, error);
+      });
   } catch (error) {
     await handleError(ctx, error);
   }

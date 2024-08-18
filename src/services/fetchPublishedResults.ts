@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { PUBLISHED_RESULTS_URL } from "constants/constants";
+import { PUBLISHED_RESULTS_URL } from "constants/api/constants";
 import { PublishedResultData } from "types/types";
 import ServerError from "errors/ServerError";
 import DataNotFoundError from "errors/DataNotFoundError";

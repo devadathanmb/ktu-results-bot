@@ -61,36 +61,36 @@ async function sendFinalResult(ctx: CustomContext) {
   );
   const token = targetResult!.token;
 
-  const { summary, resultDetails } = await fetchResult(
-    ctx.scene.session.dob,
-    ctx.scene.session.regisNo,
-    token
-  );
-
-  const sgpa = calculateSgpa(resultDetails);
-  await ctx.replyWithHTML(formatSummaryMessage(summary));
-  const resultMessages = formatResultMessage(resultDetails, sgpa);
-  for (let i = 0; i < resultMessages.length; i++) {
-    await ctx.replyWithHTML(resultMessages[i]);
-  }
-  await ctx.replyWithHTML("Check another result?", {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "Yes ✅",
-            callback_data: "check_another_result_true",
-          },
-          {
-            text: "No ❌",
-            callback_data: "check_another_result_false",
-          },
-        ],
-      ],
-    },
-  });
-  ctx.scene.session.tempMsgId = -1;
-  await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+  fetchResult(ctx.scene.session.dob, ctx.scene.session.regisNo, token)
+    .then(async ({ summary, resultDetails }) => {
+      const sgpa = calculateSgpa(resultDetails);
+      await ctx.replyWithHTML(formatSummaryMessage(summary));
+      const resultMessages = formatResultMessage(resultDetails, sgpa);
+      for (let i = 0; i < resultMessages.length; i++) {
+        await ctx.replyWithHTML(resultMessages[i]);
+      }
+      await ctx.replyWithHTML("Check another result?", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Yes ✅",
+                callback_data: "check_another_result_true",
+              },
+              {
+                text: "No ❌",
+                callback_data: "check_another_result_false",
+              },
+            ],
+          ],
+        },
+      });
+      ctx.scene.session.tempMsgId = -1;
+      await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+    })
+    .catch(async (error) => {
+      return await handleError(ctx, error);
+    });
 }
 
 const resultWizard = new Scenes.WizardScene<CustomContext>(
@@ -99,20 +99,29 @@ const resultWizard = new Scenes.WizardScene<CustomContext>(
   // Wizard Step 0
   async (ctx: CustomContext) => {
     try {
+      if (ctx.scene.session.waitingMsgId) {
+        await ctx.reply("Patience is the key to success. Please wait.");
+        return;
+      }
       const waitingMsg = await ctx.reply(
         "Fetching available courses.. Please wait.."
       );
       ctx.scene.session.waitingMsgId = waitingMsg.message_id;
-      const courses = await fetchCourses();
-      await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-      ctx.scene.session.waitingMsgId = null;
-      const courseButtons = courses.map(({ id, name }) =>
-        Markup.button.callback(name, `course_${id}`)
-      );
-      const keyboard = Markup.inlineKeyboard(courseButtons, { columns: 1 });
-      const msg = await ctx.sendMessage("Choose a course:", keyboard);
-      ctx.scene.session.tempMsgId = msg.message_id;
-      return ctx.wizard.next();
+      fetchCourses()
+        .then(async (courses) => {
+          await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+          ctx.scene.session.waitingMsgId = null;
+          const courseButtons = courses.map(({ id, name }) =>
+            Markup.button.callback(name, `course_${id}`)
+          );
+          const keyboard = Markup.inlineKeyboard(courseButtons, { columns: 1 });
+          const msg = await ctx.sendMessage("Choose a course:", keyboard);
+          ctx.scene.session.tempMsgId = msg.message_id;
+          return ctx.wizard.next();
+        })
+        .catch(async (error) => {
+          return await handleError(ctx, error);
+        });
     } catch (error) {
       return await handleError(ctx, error);
     }
@@ -155,22 +164,30 @@ const resultWizard = new Scenes.WizardScene<CustomContext>(
         "Fetching available results.. Please wait.."
       );
       ctx.scene.session.waitingMsgId = waitingMsg.message_id;
-      const publishedResults = await fetchPublishedResults(courseId);
+      fetchPublishedResults(courseId);
+      fetchPublishedResults(courseId)
+        .then(async (publishedResults) => {
+          const resultButtons = publishedResults.map(({ resultName, index }) =>
+            Markup.button.callback(resultName, `result_${index}`)
+          );
 
-      const resultButtons = publishedResults.map(({ resultName, index }) =>
-        Markup.button.callback(resultName, `result_${index}`)
-      );
+          const goBackButton = Markup.button.callback("🔙 Back", "back_to_0");
 
-      const goBackButton = Markup.button.callback("🔙 Back", "back_to_0");
-
-      const keyboard = Markup.inlineKeyboard([...resultButtons, goBackButton], {
-        columns: 1,
-      });
-      const msg = await ctx.sendMessage("Choose a result:", keyboard);
-      await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-      ctx.scene.session.waitingMsgId = null;
-      ctx.scene.session.tempMsgId = msg.message_id;
-      return ctx.wizard.next();
+          const keyboard = Markup.inlineKeyboard(
+            [...resultButtons, goBackButton],
+            {
+              columns: 1,
+            }
+          );
+          const msg = await ctx.sendMessage("Choose a result:", keyboard);
+          await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+          ctx.scene.session.waitingMsgId = null;
+          ctx.scene.session.tempMsgId = msg.message_id;
+          return ctx.wizard.next();
+        })
+        .catch(async (error) => {
+          return await handleError(ctx, error);
+        });
     } catch (error) {
       return await handleError(ctx, error);
     }

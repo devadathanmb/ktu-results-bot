@@ -1,5 +1,5 @@
 import { axios } from "api/axios";
-import { ACADEMIC_CALENDAR_URL } from "constants/constants";
+import { ACADEMIC_CALENDAR_URL } from "constants/api/constants";
 import { AcademicCalendar } from "types/types";
 import ServerError from "errors/ServerError";
 import formatDate from "utils/formatDate";

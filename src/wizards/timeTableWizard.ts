@@ -94,40 +94,45 @@ const timetableWizard = new Scenes.WizardScene<CustomContext>(
         return;
       }
 
-      const file = await fetchAttachment(chosenTimetable.encryptId);
-      const fileBuffer = Buffer.from(file, "base64");
+      fetchAttachment(chosenTimetable.encryptId)
+        .then(async (file) => {
+          const fileBuffer = Buffer.from(file, "base64");
 
-      const captionMsg = `
+          const captionMsg = `
 <b>Title:</b> ${chosenTimetable.title}
 
 <b>Date:</b> ${chosenTimetable.date}
 `;
 
-      await ctx.replyWithDocument(
-        {
-          source: fileBuffer,
-          filename: chosenTimetable.fileName,
-        },
-        { caption: captionMsg, parse_mode: "HTML" }
-      );
+          await ctx.replyWithDocument(
+            {
+              source: fileBuffer,
+              filename: chosenTimetable.fileName,
+            },
+            { caption: captionMsg, parse_mode: "HTML" }
+          );
 
-      await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-      await ctx.replyWithHTML("View another time table?", {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "Yes ✅",
-                callback_data: "check_another_timetable_true",
-              },
-              {
-                text: "No ❌",
-                callback_data: "check_another_timetable_false",
-              },
-            ],
-          ],
-        },
-      });
+          await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+          await ctx.replyWithHTML("View another time table?", {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "Yes ✅",
+                    callback_data: "check_another_timetable_true",
+                  },
+                  {
+                    text: "No ❌",
+                    callback_data: "check_another_timetable_false",
+                  },
+                ],
+              ],
+            },
+          });
+        })
+        .catch(async (error) => {
+          await handleError(ctx, error);
+        });
     } catch (error) {
       return await handleError(ctx, error);
     }
@@ -139,51 +144,55 @@ async function showTimetables(ctx: CustomContext) {
   try {
     const waitingMsg = await ctx.reply("Fetching time tables.. Please wait..");
     ctx.scene.session.waitingMsgId = waitingMsg.message_id;
-    const timetables = await fetchTimetables(ctx.scene.session.pageNumber, 10);
+    fetchTimetables(ctx.scene.session.pageNumber, 10)
+      .then(async (timetables) => {
+        let timetableMsg = "<b>Exam time tables</b>:\n\n";
+        let timetableButtons: InlineKeyboardButton.CallbackButton[] = [];
 
-    let timetableMsg = "<b>Exam time tables</b>:\n\n";
-    let timetableButtons: InlineKeyboardButton.CallbackButton[] = [];
+        timetables.forEach(({ id, title, date }, index) => {
+          timetableMsg += `${index + 1}) ${shortenString(title)}\n<i>Published date : ${date || "N/A"}</i>\n\n`;
+          timetableButtons.push(
+            Markup.button.callback(`${index + 1}`, `timetable_${id}`)
+          );
+        });
 
-    timetables.forEach(({ id, title, date }, index) => {
-      timetableMsg += `${index + 1}) ${shortenString(title)}\n<i>Published date : ${date || "N/A"}</i>\n\n`;
-      timetableButtons.push(
-        Markup.button.callback(`${index + 1}`, `timetable_${id}`)
-      );
-    });
+        timetableMsg += `<b>• <i>Choose an exam time table using the buttons below</i></b>\n\n`;
+        timetableMsg += `<b>• <i>Use <code>/page pageno</code> to jump to a specific page</i></b>`;
 
-    timetableMsg += `<b>• <i>Choose an exam time table using the buttons below</i></b>\n\n`;
-    timetableMsg += `<b>• <i>Use <code>/page pageno</code> to jump to a specific page</i></b>`;
-
-    const nextPageButton = Markup.button.callback("Next ⏭️", "next_page");
-    const prevPageButton = Markup.button.callback("Prev ⏮️", "prev_page");
-    const pageButton = Markup.button.callback(
-      `Page : ${ctx.scene.session.pageNumber + 1}`,
-      "page"
-    );
-    const keyboard = Markup.inlineKeyboard(
-      [...timetableButtons, prevPageButton, pageButton, nextPageButton],
-      {
-        wrap(btn, index, _currentRow) {
-          if (!isNaN(Number(btn.text))) {
-            if (index % 5 === 0) {
-              return true;
-            }
-            return false;
-          } else if (btn === prevPageButton) {
-            return true;
+        const nextPageButton = Markup.button.callback("Next ⏭️", "next_page");
+        const prevPageButton = Markup.button.callback("Prev ⏮️", "prev_page");
+        const pageButton = Markup.button.callback(
+          `Page : ${ctx.scene.session.pageNumber + 1}`,
+          "page"
+        );
+        const keyboard = Markup.inlineKeyboard(
+          [...timetableButtons, prevPageButton, pageButton, nextPageButton],
+          {
+            wrap(btn, index, _currentRow) {
+              if (!isNaN(Number(btn.text))) {
+                if (index % 5 === 0) {
+                  return true;
+                }
+                return false;
+              } else if (btn === prevPageButton) {
+                return true;
+              }
+              return false;
+            },
           }
-          return false;
-        },
-      }
-    );
-    await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
-    ctx.scene.session.waitingMsgId = null;
-    const msg = await ctx.sendMessage(timetableMsg, {
-      parse_mode: "HTML",
-      ...keyboard,
-    });
-    ctx.scene.session.tempMsgId = msg.message_id;
-    ctx.scene.session.timetables = timetables;
+        );
+        await deleteMessage(ctx, ctx.scene.session.waitingMsgId);
+        ctx.scene.session.waitingMsgId = null;
+        const msg = await ctx.sendMessage(timetableMsg, {
+          parse_mode: "HTML",
+          ...keyboard,
+        });
+        ctx.scene.session.tempMsgId = msg.message_id;
+        ctx.scene.session.timetables = timetables;
+      })
+      .catch(async (error) => {
+        await handleError(ctx, error);
+      });
   } catch (error) {
     await handleError(ctx, error);
   }
